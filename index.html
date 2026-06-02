@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ランダム数字カード・スコアカウンター</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+      background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #0f172a 100%);
+      min-height: 100vh;
+      color: #f8fafc;
+    }
+    .glass-panel {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .card-3d {
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-style: preserve-3d;
+    }
+    .card-flip {
+      transform: rotateY(180deg);
+    }
+    .card-front, .card-back {
+      backface-visibility: hidden;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .card-front {
+      transform: rotateY(180deg);
+    }
+  </style>
+</head>
+<body class="flex flex-col justify-between p-3 md:p-6 selection:bg-indigo-500 selection:text-white h-screen overflow-hidden">
+
+  <!-- メインコンテンツコンテナ（PCでの無駄なスクロールを防ぐため max-w-4xl に拡張） -->
+  <main class="flex-grow flex items-center justify-center max-w-4xl mx-auto w-full my-auto overflow-hidden">
+
+    <!-- 1. 設定画面 -->
+    <div id="setup-screen" class="w-full max-w-md glass-panel rounded-3xl p-6 md:p-8 shadow-2xl space-y-5 my-auto">
+      <div class="text-center space-y-1.5">
+        <div class="inline-flex p-2.5 bg-indigo-500/10 text-indigo-400 rounded-2xl mb-1">
+          <!-- Trophy SVG -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"/><path d="M12 2a6 6 0 0 1 6 6v5a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"/></svg>
+        </div>
+        <h1 class="text-xl md:text-2xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">数字カードスコアラー</h1>
+        <p class="text-xs text-slate-400">1〜10のカードを引き、得点を記録するアプリ</p>
+      </div>
+
+      <!-- 人数設定 -->
+      <div class="space-y-2">
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">プレイヤー人数</label>
+        <div class="grid grid-cols-4 gap-1.5">
+          <!-- 2〜8人ボタン -->
+          <button type="button" onclick="setPlayerCount(2)" class="btn-count py-2 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700 font-bold text-sm transition duration-200">2人</button>
+          <button type="button" onclick="setPlayerCount(3)" class="btn-count py-2 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700 font-bold text-sm transition duration-200">3人</button>
+          <button type="button" onclick="setPlayerCount(4)" class="btn-count py-2 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700 font-bold text-sm transition duration-200">4人</button>
+          <button type="button" onclick="setPlayerCount(5)" class="btn-count py-2 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700 font-bold text-sm transition duration-200">5人</button>
+          <button type="button" onclick="setPlayerCount(6)" class="btn-count py-2 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700 font-bold text-sm transition duration-200">6人</button>
+          <button type="button" onclick="setPlayerCount(7)" class="btn-count py-2 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700 font-bold text-sm transition duration-200">7人</button>
+          <button type="button" onclick="setPlayerCount(8)" class="btn-count py-2 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700 font-bold text-sm transition duration-200">8人</button>
+        </div>
+      </div>
+
+      <!-- 名前入力エリア -->
+      <div class="space-y-2">
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">名前の登録</label>
+        <div id="player-inputs-container" class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
+          <!-- JSで動的に追加されます -->
+        </div>
+      </div>
+
+      <!-- 開始ボタン -->
+      <button onclick="startGame()" class="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/25 active:scale-[0.98] transition-all duration-150 flex items-center justify-center gap-2 text-base">
+        ゲームを開始する
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </button>
+    </div>
+
+    <!-- 2. メインゲーム画面（PCでは2カラム、スマホでは1カラム） -->
+    <div id="game-screen" class="w-full glass-panel rounded-3xl p-4 md:p-6 shadow-2xl space-y-4 hidden flex flex-col justify-between max-h-[90vh]">
+      
+      <!-- ヘッダー進行状況と操作ボタン -->
+      <div class="flex items-center justify-between border-b border-slate-700/50 pb-2.5">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-full">
+            ROUND <span id="current-round">1</span> / 10
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- アンドゥボタン -->
+          <button id="undo-button" onclick="undoLastAction()" class="flex items-center gap-1 px-2.5 py-1.5 bg-slate-850 hover:bg-slate-750 border border-slate-700 text-xs font-bold text-slate-300 rounded-xl transition duration-150 active:scale-95 disabled:opacity-30 disabled:pointer-events-none" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+            戻す
+          </button>
+          <!-- 中断ボタン -->
+          <button onclick="openInterruptModal()" class="flex items-center gap-1 px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-xs font-bold text-rose-400 rounded-xl transition duration-150 active:scale-95">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
+            中断
+          </button>
+        </div>
+      </div>
+
+      <!-- PC用レイアウト分割コンテナ -->
+      <div class="flex flex-col md:flex-row gap-6 items-stretch justify-center">
+        
+        <!-- 左側：カード表示部 -->
+        <div class="flex flex-col items-center justify-center py-2 md:w-1/2 border-b md:border-b-0 md:border-r border-slate-700/40 md:pr-6">
+          <div class="relative w-40 h-52 md:w-48 md:h-64 perspective-1000">
+            <div id="card-element" class="card-3d w-full h-full relative cursor-pointer" onclick="drawCard()">
+              
+              <!-- カードの裏面（めくる前） -->
+              <div class="card-back w-full h-full rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-4 border border-indigo-400/30 shadow-2xl flex flex-col items-center justify-between text-center">
+                <div class="w-full border-2 border-indigo-400/20 rounded-xl flex-grow flex flex-col items-center justify-center p-3">
+                  <div class="text-indigo-300/40 font-black text-5xl tracking-tighter">?</div>
+                  <div class="mt-4 text-[10px] font-bold tracking-widest text-indigo-200/60 uppercase">TAP TO DRAW</div>
+                </div>
+              </div>
+
+              <!-- カードの表面（数字表示） -->
+              <div class="card-front w-full h-full rounded-2xl bg-slate-950 p-4 border-2 border-amber-500/50 shadow-2xl flex flex-col items-center justify-between text-center">
+                <div class="w-full border border-amber-500/20 rounded-xl flex-grow flex flex-col items-center justify-center bg-slate-900">
+                  <div id="card-number" class="text-6xl md:text-7xl font-black text-amber-400 drop-shadow-[0_4px_12px_rgba(245,158,11,0.3)]">--</div>
+                  <div class="text-[9px] md:text-[10px] font-extrabold tracking-widest text-amber-500/80 mt-2">POINTS CARD</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          
+          <p id="game-status-hint" class="text-center mt-3 text-xs md:text-sm font-bold text-indigo-300 animate-pulse max-w-[280px]">
+            中央のカードをタップして数字をめくってください
+          </p>
+        </div>
+
+        <!-- 右側：プレイヤーリスト（加算・編集操作部） -->
+        <div class="flex flex-col justify-center md:w-1/2 space-y-2 md:pl-2">
+          <div class="flex items-center justify-between">
+            <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">タップしてポイント加算 / 編集:</h3>
+            <span class="text-[10px] text-slate-500 hidden md:inline" id="tap-instruction">※カードを開いてから選んでください</span>
+          </div>
+          
+          <!-- PCでも見やすく、無駄にスクロールさせないようグリッド形式に。高さ固定で中身だけスクロール -->
+          <div id="players-game-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-2 overflow-y-auto pr-1 max-h-[220px] md:max-h-[280px]">
+            <!-- JSでプレイヤーごとの加算用ボタンが動的に挿入されます -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 3. 結果画面（リザルト） -->
+    <div id="result-screen" class="w-full max-w-md glass-panel rounded-3xl p-6 shadow-2xl space-y-5 hidden my-auto">
+      <div class="text-center space-y-1.5">
+        <div class="inline-flex p-2.5 bg-amber-500/10 text-amber-400 rounded-2xl mb-1">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        </div>
+        <h1 class="text-xl md:text-2xl font-black text-slate-100">ゲーム終了！</h1>
+        <p class="text-xs text-slate-400">10ラウンドの最終結果スコア</p>
+      </div>
+
+      <!-- ランキング表示 -->
+      <div class="space-y-2 max-h-[260px] overflow-y-auto pr-1" id="ranking-container">
+        <!-- JSでランキング一覧を生成 -->
+      </div>
+
+      <!-- 操作ボタン -->
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <button onclick="restartSamePlayers()" class="py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold rounded-xl transition duration-150 active:scale-95 text-xs flex items-center justify-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          同じメンバーで再戦
+        </button>
+        <button onclick="resetToSetup()" class="py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold rounded-xl transition duration-150 active:scale-95 text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/15">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          初期設定に戻る
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- === 各種モーダルUI === -->
+
+  <!-- A. 中断 / リセット確認モーダル -->
+  <div id="interrupt-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden">
+    <div class="w-full max-w-sm bg-slate-900 border border-slate-700/80 rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="text-center space-y-2">
+        <div class="inline-flex p-3 bg-rose-500/10 text-rose-400 rounded-2xl">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-100">ゲームを中断しますか？</h3>
+        <p class="text-xs text-slate-400">これまでのスコアとゲームの進捗は失われます。</p>
+      </div>
+      <div class="space-y-2 pt-2">
+        <!-- 初期状態に戻る -->
+        <button onclick="confirmResetToSetup()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm transition active:scale-95">
+          中断して初期設定に戻る
+        </button>
+        <!-- 現在のプレイヤーのまま1ラウンド目から再戦 -->
+        <button onclick="confirmRestartSamePlayers()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold rounded-xl text-sm transition active:scale-95">
+          スコアをリセットして再開 (1RND目から)
+        </button>
+        <!-- キャンセル -->
+        <button onclick="closeInterruptModal()" class="w-full py-2.5 bg-transparent hover:bg-slate-800 text-slate-400 font-semibold rounded-xl text-xs transition">
+          キャンセル
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- B. スコア個別編集モーダル -->
+  <div id="edit-score-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden">
+    <div class="w-full max-w-sm bg-slate-900 border border-slate-700/80 rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="text-center space-y-1">
+        <h3 class="text-lg font-bold text-slate-100">スコアの直接編集</h3>
+        <p class="text-xs text-slate-400"><span id="edit-player-name" class="font-bold text-indigo-400">--</span> さんの現在のスコアを編集します</p>
+      </div>
+
+      <!-- スコア直接入力欄・微調整ボタン -->
+      <div class="flex items-center justify-center gap-3 py-3">
+        <button onclick="adjustEditScore(-1)" class="w-10 h-10 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl active:scale-90 transition">-1</button>
+        <input type="number" id="edit-score-input" class="w-24 text-center py-2 bg-slate-955 border border-slate-700 rounded-xl text-xl font-black text-amber-400 focus:outline-none focus:border-indigo-500" min="0" max="999">
+        <button onclick="adjustEditScore(1)" class="w-10 h-10 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl active:scale-90 transition">+1</button>
+      </div>
+
+      <div class="flex gap-2.5 pt-2">
+        <button onclick="closeEditScoreModal()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 font-semibold rounded-xl text-sm transition">
+          キャンセル
+        </button>
+        <button onclick="saveEditedScore()" class="flex-1 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold rounded-xl text-sm transition active:scale-95 shadow-md shadow-indigo-500/10">
+          保存する
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- トーストメッセージ表示用 -->
+  <div id="toast-message" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-900 border border-slate-700 text-slate-200 text-xs font-semibold rounded-full shadow-xl opacity-0 transition-opacity duration-300 pointer-events-none z-50"></div>
+
+  <!-- フッター -->
+  <footer class="text-center py-3 text-[10px] text-slate-500 mt-auto">
+    &copy; 2026 数字カードスコアラー | 重複なしランダム 1〜10 (10RND)
+  </footer>
+
+  <script>
+    // --- アプリケーションの状態管理 ---
+    let players = [];        // プレイヤーデータ { id, name, score }
+    let playerCount = 4;     // デフォルト人数
+    let currentRound = 1;    // 現在のラウンド (1〜10)
+    let availableNumbers = []; // 使用可能なカード(1〜10)
+    let currentDrawnNumber = null; // 現在めくられた数字
+    let hasPointAddedThisRound = false; // 今ラウンドでポイントが加算されたか
+
+    // 編集モーダル用のターゲット情報保持
+    let editingPlayerId = null;
+
+    // アンドゥ履歴管理
+    let historyState = null; // 1つ前の状態を保持 { round, availableNumbers, currentDrawnNumber, hasPointAddedThisRound, players: [] }
+
+    // --- DOMロード時処理 ---
+    window.onload = function() {
+      // 初期状態のセットアップ
+      setPlayerCount(playerCount);
+    };
+
+    // --- トースト通知ユーティリティ ---
+    function showToast(text) {
+      const toast = document.getElementById('toast-message');
+      toast.innerText = text;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2000);
+    }
+
+    // --- 1. セットアップ画面処理 ---
+    function setPlayerCount(count) {
+      playerCount = count;
+      
+      // ボタンのアクティブ表現の更新
+      const buttons = document.querySelectorAll('.btn-count');
+      buttons.forEach(btn => {
+        const textCount = parseInt(btn.innerText);
+        if (textCount === count) {
+          btn.classList.remove('border-slate-700', 'bg-slate-800/50', 'text-slate-300');
+          btn.classList.add('border-indigo-500', 'bg-indigo-600/20', 'text-indigo-300');
+        } else {
+          btn.classList.remove('border-indigo-500', 'bg-indigo-600/20', 'text-indigo-300');
+          btn.classList.add('border-slate-700', 'bg-slate-800/50', 'text-slate-300');
+        }
+      });
+
+      // 入力フォームの生成
+      const container = document.getElementById('player-inputs-container');
+      container.innerHTML = '';
+      for (let i = 1; i <= count; i++) {
+        container.innerHTML += `
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-500 w-6">P${i}</span>
+            <input type="text" id="player-name-${i}" value="プレイヤー ${i}" 
+              placeholder="プレイヤー ${i} の名前" 
+              class="flex-grow px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs focus:outline-none focus:border-indigo-500 text-slate-200 font-medium">
+          </div>
+        `;
+      }
+    }
+
+    // ゲーム開始
+    function startGame() {
+      players = [];
+      for (let i = 1; i <= playerCount; i++) {
+        const input = document.getElementById(`player-name-${i}`);
+        let name = input ? input.value.trim() : '';
+        if (!name) name = `プレイヤー ${i}`;
+        players.push({
+          id: i,
+          name: name,
+          score: 0
+        });
+      }
+
+      // ゲーム状態のリセット
+      currentRound = 1;
+      availableNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      currentDrawnNumber = null;
+      hasPointAddedThisRound = false;
+      historyState = null;
+
+      // 表示を更新してゲーム画面へ
+      updateGameUI();
+      resetCardUI();
+
+      document.getElementById('setup-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+      document.getElementById('result-screen').classList.add('hidden');
+      
+      showToast('ゲームが始まりました！');
+    }
+
+    // --- 2. ゲーム画面処理 ---
+
+    // カードを引く
+    function drawCard() {
+      if (currentDrawnNumber !== null && !hasPointAddedThisRound) {
+        showToast('先に得点をプレイヤーに加算してください！');
+        return;
+      }
+      if (availableNumbers.length === 0) {
+        showToast('カードがありません！');
+        return;
+      }
+
+      // カードを引く前のアクション履歴を退避
+      saveToHistory();
+
+      // カードをランダムに引く
+      const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+      currentDrawnNumber = availableNumbers.splice(randomIndex, 1)[0];
+      hasPointAddedThisRound = false;
+
+      // カードめくりアニメーション＆表示更新
+      const cardEl = document.getElementById('card-element');
+      document.getElementById('card-number').innerText = currentDrawnNumber;
+      
+      cardEl.classList.add('card-flip');
+      
+      document.getElementById('game-status-hint').innerText = "ポイントを受け取る人をタップしてください";
+      document.getElementById('game-status-hint').className = "text-center mt-3 text-xs md:text-sm font-bold text-amber-400 animate-bounce";
+      const tapInst = document.getElementById('tap-instruction');
+      if (tapInst) tapInst.className = "text-[10px] text-amber-400 font-semibold";
+
+      updatePlayersList();
+      updateUndoButtonState();
+    }
+
+    // プレイヤーにポイントを加算
+    function addPointToPlayer(playerId) {
+      if (currentDrawnNumber === null) {
+        showToast('まずはカードをタップして数字を引いてください！');
+        return;
+      }
+      if (hasPointAddedThisRound) {
+        showToast('このラウンドのポイント加算は既に完了しています。次のカードへ進めてください。');
+        return;
+      }
+
+      // 加算直前の状態をもう一度履歴として保存可能にする (1手戻るため)
+      saveToHistory();
+
+      // スコア反映
+      const player = players.find(p => p.id === playerId);
+      if (player) {
+        player.score += currentDrawnNumber;
+        hasPointAddedThisRound = true;
+        showToast(`${player.name} に ${currentDrawnNumber}pt 加算しました！`);
+      }
+
+      // 次の準備
+      if (currentRound < 10) {
+        document.getElementById('game-status-hint').innerText = "次のカードをめくってください！";
+        document.getElementById('game-status-hint').className = "text-center mt-3 text-xs md:text-sm font-bold text-indigo-300 animate-pulse";
+        const tapInst = document.getElementById('tap-instruction');
+        if (tapInst) tapInst.className = "text-[10px] text-slate-500";
+        
+        // わずかなディレイののち、カードを裏に戻して次のラウンドへ
+        setTimeout(() => {
+          if (currentRound < 10) {
+            currentRound++;
+            currentDrawnNumber = null;
+            hasPointAddedThisRound = false;
+            resetCardUI();
+            updateGameUI();
+          }
+        }, 1200);
+
+      } else {
+        // 10ラウンド終了時、結果画面へ遷移
+        document.getElementById('game-status-hint').innerText = "ゲーム終了！リザルトを集計中...";
+        document.getElementById('game-status-hint').className = "text-center mt-3 text-xs md:text-sm font-bold text-emerald-400";
+        setTimeout(() => {
+          showResult();
+        }, 1500);
+      }
+
+      updatePlayersList();
+      updateUndoButtonState();
+    }
+
+    // アンドゥ（1手戻す）
+    function undoLastAction() {
+      if (!historyState) return;
+
+      // 1つ前の状態に復元
+      currentRound = historyState.round;
+      availableNumbers = [...historyState.availableNumbers];
+      currentDrawnNumber = historyState.currentDrawnNumber;
+      hasPointAddedThisRound = historyState.hasPointAddedThisRound;
+      players = historyState.players.map(p => ({ ...p }));
+
+      // 復元したので履歴を一度クリア
+      historyState = null;
+
+      // UIの再反映
+      if (currentDrawnNumber === null) {
+        resetCardUI();
+        document.getElementById('game-status-hint').innerText = "中央のカードをタップして数字をめくってください";
+        document.getElementById('game-status-hint').className = "text-center mt-3 text-xs md:text-sm font-bold text-indigo-300 animate-pulse";
+        const tapInst = document.getElementById('tap-instruction');
+        if (tapInst) tapInst.className = "text-[10px] text-slate-500";
+      } else {
+        // 数字が表示されている状態へ
+        document.getElementById('card-element').classList.add('card-flip');
+        document.getElementById('card-number').innerText = currentDrawnNumber;
+        document.getElementById('game-status-hint').innerText = "ポイントを受け取る人をタップしてください";
+        document.getElementById('game-status-hint').className = "text-center mt-3 text-xs md:text-sm font-bold text-amber-400 animate-bounce";
+        const tapInst = document.getElementById('tap-instruction');
+        if (tapInst) tapInst.className = "text-[10px] text-amber-400 font-semibold";
+      }
+
+      updateGameUI();
+      updatePlayersList();
+      updateUndoButtonState();
+      showToast('1手前の状態に戻しました');
+    }
+
+    // 履歴セーブ
+    function saveToHistory() {
+      historyState = {
+        round: currentRound,
+        availableNumbers: [...availableNumbers],
+        currentDrawnNumber: currentDrawnNumber,
+        hasPointAddedThisRound: hasPointAddedThisRound,
+        players: players.map(p => ({ ...p }))
+      };
+    }
+
+    function updateUndoButtonState() {
+      const undoBtn = document.getElementById('undo-button');
+      if (historyState) {
+        undoBtn.removeAttribute('disabled');
+      } else {
+        undoBtn.setAttribute('disabled', 'true');
+      }
+    }
+
+    // カード表示を裏面（?）に戻す
+    function resetCardUI() {
+      const cardEl = document.getElementById('card-element');
+      cardEl.classList.remove('card-flip');
+      setTimeout(() => {
+        document.getElementById('card-number').innerText = '--';
+      }, 300); // フリップ途中で数字を隠す
+    }
+
+    // ゲーム内全般のテキスト・進捗更新
+    function updateGameUI() {
+      document.getElementById('current-round').innerText = currentRound;
+    }
+
+    // ゲーム中のプレイヤーリスト一覧生成
+    function updatePlayersList() {
+      const listContainer = document.getElementById('players-game-list');
+      listContainer.innerHTML = '';
+
+      // カード未めくり、またはすでにこのラウンド加算済みの場合はボタンを無効（くすんだ表示）にする
+      const isSelectable = (currentDrawnNumber !== null && !hasPointAddedThisRound);
+
+      players.forEach(p => {
+        // タップ可能な場合と不可の場合のレイアウトクラス
+        const borderClass = isSelectable 
+          ? 'border-indigo-500/40 bg-slate-800/80 hover:bg-slate-700/80 hover:border-indigo-400' 
+          : 'border-slate-800 bg-slate-900/40 opacity-70';
+
+        const badgeClass = isSelectable ? 'bg-indigo-500/20 text-indigo-300' : 'bg-slate-800 text-slate-500';
+
+        // PC画面での1画面収まりを良くするため、高さをすこしコンパクト（p-2.5）に
+        listContainer.innerHTML += `
+          <div class="flex items-stretch gap-1 rounded-2xl border ${borderClass} overflow-hidden w-full transition duration-200">
+            <!-- 加算用ボタンエリア -->
+            <button type="button" 
+              onclick="addPointToPlayer(${p.id})" 
+              ${!isSelectable ? 'disabled' : ''} 
+              class="flex-grow flex items-center justify-between p-2.5 text-left w-full active:scale-[0.98] transition">
+              <div class="truncate mr-1.5 flex items-center gap-2">
+                <span class="text-[9px] text-slate-500 font-bold bg-slate-850 px-1.5 py-0.5 rounded-md">P${p.id}</span>
+                <span class="text-xs md:text-sm font-bold text-slate-100 truncate">${p.name}</span>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <span class="px-2 py-0.5 rounded-lg text-xs font-black ${badgeClass}">
+                  ${p.score}pt
+                </span>
+              </div>
+            </button>
+            
+            <!-- スコア個別編集ボタン（常時アクセス可能） -->
+            <button type="button" 
+              onclick="openEditScoreModal(${p.id})" 
+              title="${p.name}のスコアを直接変更"
+              class="px-3 bg-slate-800/40 hover:bg-slate-700 border-l border-slate-700/50 flex items-center justify-center text-slate-400 hover:text-slate-200 transition">
+              <!-- Pencil Icon SVG -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </button>
+          </div>
+        `;
+      });
+    }
+
+    // --- 中断 / リセットモーダル処理 ---
+    function openInterruptModal() {
+      document.getElementById('interrupt-modal').classList.remove('hidden');
+    }
+
+    function closeInterruptModal() {
+      document.getElementById('interrupt-modal').classList.add('hidden');
+    }
+
+    function confirmResetToSetup() {
+      closeInterruptModal();
+      resetToSetup();
+      showToast('ゲームを中断し、初期設定に戻りました');
+    }
+
+    function confirmRestartSamePlayers() {
+      closeInterruptModal();
+      restartSamePlayers();
+    }
+
+    // --- 個別スコア編集モーダル処理 ---
+    function openEditScoreModal(playerId) {
+      const player = players.find(p => p.id === playerId);
+      if (!player) return;
+
+      editingPlayerId = playerId;
+      document.getElementById('edit-player-name').innerText = player.name;
+      document.getElementById('edit-score-input').value = player.score;
+      document.getElementById('edit-score-modal').classList.remove('hidden');
+    }
+
+    function closeEditScoreModal() {
+      document.getElementById('edit-score-modal').classList.add('hidden');
+      editingPlayerId = null;
+    }
+
+    function adjustEditScore(amount) {
+      const input = document.getElementById('edit-score-input');
+      let val = parseInt(input.value) || 0;
+      val = Math.max(0, Math.min(999, val + amount));
+      input.value = val;
+    }
+
+    function saveEditedScore() {
+      if (editingPlayerId === null) return;
+      
+      const input = document.getElementById('edit-score-input');
+      const newScore = parseInt(input.value);
+      
+      if (isNaN(newScore) || newScore < 0) {
+        showToast('有効なスコアを入力してください');
+        return;
+      }
+
+      // 編集前のアクション履歴を退避
+      saveToHistory();
+
+      const player = players.find(p => p.id === editingPlayerId);
+      if (player) {
+        const oldScore = player.score;
+        player.score = newScore;
+        showToast(`${player.name} のスコアを ${oldScore}pt ➔ ${newScore}pt に変更しました`);
+      }
+
+      closeEditScoreModal();
+      updatePlayersList();
+      updateUndoButtonState();
+    }
+
+    // --- 3. 結果画面（リザルト）処理 ---
+    function showResult() {
+      document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.remove('hidden');
+
+      // スコアの降順にソート（同点の場合はプレイヤーID順）
+      const rankedPlayers = [...players].sort((a, b) => b.score - a.score || a.id - b.id);
+      
+      const rankingContainer = document.getElementById('ranking-container');
+      rankingContainer.innerHTML = '';
+
+      rankedPlayers.forEach((p, idx) => {
+        const rank = idx + 1;
+        let rankBadge = '';
+        let rowStyle = 'bg-slate-800/40 border-slate-800';
+
+        // 順位に応じたゴージャスな装飾
+        if (rank === 1) {
+          rankBadge = '🥇';
+          rowStyle = 'bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-amber-500/30';
+        } else if (rank === 2) {
+          rankBadge = '🥈';
+          rowStyle = 'bg-gradient-to-r from-slate-300/15 via-slate-300/5 to-transparent border-slate-400/30';
+        } else if (rank === 3) {
+          rankBadge = '🥉';
+          rowStyle = 'bg-gradient-to-r from-amber-700/15 via-amber-700/5 to-transparent border-amber-800/30';
+        } else {
+          rankBadge = `<span class="w-5 h-5 flex items-center justify-center rounded-full bg-slate-800 text-[10px] font-bold text-slate-400">${rank}</span>`;
+        }
+
+        rankingContainer.innerHTML += `
+          <div class="flex items-center justify-between p-3 rounded-2xl border ${rowStyle} transition duration-150">
+            <div class="flex items-center gap-3 truncate">
+              <div class="flex-shrink-0 w-8 text-center text-lg flex items-center justify-center">${rankBadge}</div>
+              <div class="truncate">
+                <span class="text-[10px] font-bold text-slate-500 block">P${p.id}</span>
+                <span class="text-xs md:text-sm font-black text-slate-100">${p.name}</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-base font-black text-amber-400">${p.score}</span>
+              <span class="text-[9px] font-bold text-slate-400 ml-0.5">pt</span>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // 同じメンバーでやり直す
+    function restartSamePlayers() {
+      // プレイヤーの得点をリセット
+      players = players.map(p => ({ ...p, score: 0 }));
+      
+      currentRound = 1;
+      availableNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      currentDrawnNumber = null;
+      hasPointAddedThisRound = false;
+      historyState = null;
+
+      updateGameUI();
+      resetCardUI();
+
+      document.getElementById('result-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+
+      showToast('スコアをリセットして再戦を開始します！');
+    }
+
+    // 初期設定画面に戻る
+    function resetToSetup() {
+      document.getElementById('result-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('setup-screen').classList.remove('hidden');
+    }
+  </script>
+
+</body>
+</html>
